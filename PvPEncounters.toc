@@ -1,7 +1,7 @@
 ## Interface: 90002
 ## Title: PVP Encounters
 ## Version: 0.0.1
-## Notes: Allows to save win/loses of members you queued with in rated battlegrounds/arenas
+## Notes: PvPEncounters will track every victory and defeat in ranked matches with every single of your party members.
 ## Author: Hesa-Zul'jin-US
 ## SavedVariables: PvPEncountersState
 ## SavedVariablesPerCharacter:
