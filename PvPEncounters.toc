@@ -1,0 +1,9 @@
+## Interface: 90002
+## Title: PVP Encounters
+## Version: 0.0.1
+## Notes: Allows to save win/loses of members you queued with in rated battlegrounds/arenas
+## Author: Hesa-Zul'jin-US
+## SavedVariables: PvPEncountersState
+## SavedVariablesPerCharacter:
+
+core.xml
