@@ -7,11 +7,172 @@ PPC_FRAME = {}
 
 local currentResult = {}
 local hooked = {}
+local completed
 
-local tooltip = PPC:NewModule("LfgTooltip")
+local tooltipLFG = PPC:NewModule("LfgTooltip")
+local tooltipCommunity = PPC:NewModule("CommunityTooltip")
 
-function tooltip:CanLoad()
+function PPC:ExecuteWidgetHandler(object, handler, ...)
+    if type(object) ~= "table" or type(object.GetScript) ~= "function" then
+        return false
+    end
+    local func = object:GetScript(handler)
+    if type(func) ~= "function" then
+        return
+    end
+    if not pcall(func, object, ...) then
+        return false
+    end
+    return true
+end
+
+function tooltipLFG:CanLoad()
     return _G.LFGListSearchPanelScrollFrameButton1 and _G.LFGListApplicationViewerScrollFrameButton1
+end
+
+function tooltipCommunity:CanLoad()
+    return _G.CommunitiesFrame and _G.ClubFinderGuildFinderFrame and _G.ClubFinderCommunityAndGuildFinderFrame
+end
+
+function PPC.OnScrollCommunity()
+    GameTooltip:Hide()
+    PPC:ExecuteWidgetHandler(GetMouseFocus(), "OnEnter")--TODO
+end
+
+function PPC.IsUnitToken(unit)
+    return type(unit) == "string" and UNIT_TOKENS[unit]
+end
+
+function PPC.IsUnit(arg1, arg2)
+    if not arg2 and type(arg1) == "string" and arg1:find("-", nil, true) then
+        arg2 = true
+    end
+    local isUnit = not arg2 or PPC.IsUnitToken(arg1)
+    return isUnit, isUnit and UnitExists(arg1), isUnit and UnitIsPlayer(arg1)
+end
+
+function PPC.GetNameRealm(arg1, arg2)
+    local unit, name, realm
+    local _, unitExists, unitIsPlayer = PPC.IsUnit(arg1, arg2)
+    if unitExists then
+        unit = arg1
+        if unitIsPlayer then
+            name, realm = UnitName(arg1)
+            realm = realm and realm ~= "" and realm or GetNormalizedRealmName()
+        end
+        return name, realm, unit
+    end
+    if type(arg1) == "string" then
+        if arg1:find("-", nil, true) then
+            name, realm = ("-"):split(arg1)
+        else
+            name = arg1 -- assume this is the name
+        end
+        if not realm or realm == "" then
+            if type(arg2) == "string" and arg2 ~= "" then
+                realm = arg2
+            else
+                realm = GetNormalizedRealmName() -- assume they are on our realm
+            end
+        end
+    end
+    return name, realm, unit
+end
+
+function PPC.OnEnterCommunity(self)--TODO
+    local clubType
+    local nameAndRealm
+    if type(self.GetMemberInfo) == "function" then
+        local info = self:GetMemberInfo()
+        clubType = info.clubType
+        nameAndRealm = info.name
+    elseif type(self.cardInfo) == "table" then
+        nameAndRealm = PPC.GetNameRealm(self.cardInfo.guildLeader)
+    else
+        return
+    end
+    if (clubType and clubType ~= Enum.ClubType.Guild and clubType ~= Enum.ClubType.Character) or not nameAndRealm then
+        return
+    end
+    PPC.ShowPlayerTooltip(nameAndRealm)
+end
+
+function PPC.OnLeaveCommunity(self)
+    GameTooltip:Hide()
+end
+
+function PPC.SmartHookButtonsCommunity(buttons)
+    if not buttons then
+        return
+    end
+    local numButtons = 0
+    for _, button in pairs(buttons) do
+        numButtons = numButtons + 1
+        if not hooked[button] then
+            hooked[button] = true
+            button:HookScript("OnEnter", PPC.OnEnterCommunity)
+            button:HookScript("OnLeave", PPC.OnLeaveCommunity)
+            if type(button.OnEnter) == "function" then hooksecurefunc(button, "OnEnter", PPC.OnEnterCommunity) end
+            if type(button.OnLeave) == "function" then hooksecurefunc(button, "OnLeave", PPC.OnLeaveCommunity) end
+        end
+    end
+    return numButtons > 0
+end
+
+function PPC.OnRefreshApplyHooksCommunity()
+    if completed then
+        return
+    end
+    PPC.SmartHookButtonsCommunity(_G.CommunitiesFrame.MemberList.ListScrollFrame.buttons)
+    PPC.SmartHookButtonsCommunity(_G.ClubFinderGuildFinderFrame.CommunityCards.ListScrollFrame.buttons)
+    PPC.SmartHookButtonsCommunity(_G.ClubFinderGuildFinderFrame.PendingCommunityCards.ListScrollFrame.buttons)
+    PPC.SmartHookButtonsCommunity(_G.ClubFinderGuildFinderFrame.GuildCards.Cards)
+    PPC.SmartHookButtonsCommunity(_G.ClubFinderGuildFinderFrame.PendingGuildCards.Cards)
+    PPC.SmartHookButtonsCommunity(_G.ClubFinderCommunityAndGuildFinderFrame.CommunityCards.ListScrollFrame.buttons)
+    PPC.SmartHookButtonsCommunity(_G.ClubFinderCommunityAndGuildFinderFrame.PendingCommunityCards.ListScrollFrame.buttons)
+    PPC.SmartHookButtonsCommunity(_G.ClubFinderCommunityAndGuildFinderFrame.GuildCards.Cards)
+    PPC.SmartHookButtonsCommunity(_G.ClubFinderCommunityAndGuildFinderFrame.PendingGuildCards.Cards)
+    return true
+end
+
+function tooltipCommunity:OnLoad()
+    self:Enable()
+    hooksecurefunc(_G.CommunitiesFrame.MemberList, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
+    hooksecurefunc(_G.CommunitiesFrame.MemberList, "Update", PPC.OnScrollCommunity)
+    hooksecurefunc(_G.ClubFinderGuildFinderFrame.CommunityCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
+    hooksecurefunc(_G.ClubFinderGuildFinderFrame.CommunityCards.ListScrollFrame, "update", PPC.OnScrollCommunity)
+    hooksecurefunc(_G.ClubFinderGuildFinderFrame.PendingCommunityCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
+    hooksecurefunc(_G.ClubFinderGuildFinderFrame.PendingCommunityCards.ListScrollFrame, "update", PPC.OnScrollCommunity)
+    hooksecurefunc(_G.ClubFinderGuildFinderFrame.GuildCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
+    hooksecurefunc(_G.ClubFinderGuildFinderFrame.PendingGuildCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
+    hooksecurefunc(_G.ClubFinderCommunityAndGuildFinderFrame.CommunityCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
+    hooksecurefunc(_G.ClubFinderCommunityAndGuildFinderFrame.CommunityCards.ListScrollFrame, "update", PPC.OnScrollCommunity)
+    hooksecurefunc(_G.ClubFinderCommunityAndGuildFinderFrame.PendingCommunityCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
+    hooksecurefunc(_G.ClubFinderCommunityAndGuildFinderFrame.PendingCommunityCards.ListScrollFrame, "update", PPC.OnScrollCommunity)
+    hooksecurefunc(_G.ClubFinderCommunityAndGuildFinderFrame.GuildCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
+    hooksecurefunc(_G.ClubFinderCommunityAndGuildFinderFrame.PendingGuildCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
+end
+
+function tooltipLFG:OnLoad()
+    self:Enable()
+    -- LFG
+    for i = 1, 10 do
+        local button = _G["LFGListSearchPanelScrollFrameButton" .. i]
+        button:HookScript("OnLeave", PPC.OnLeaveApplicant)
+    end
+    -- the player hosting a group looking at applicants
+    for i = 1, 14 do
+        local button = _G["LFGListApplicationViewerScrollFrameButton" .. i]
+        button:HookScript("OnEnter", PPC.OnEnterApplicant)
+        button:HookScript("OnLeave", PPC.OnLeaveApplicant)
+    end
+    -- remove the shroud and allow hovering over people even when not the group leader
+    do
+        local f = _G.LFGListFrame.ApplicationViewer.UnempoweredCover
+        f:EnableMouse(false)
+        f:EnableMouseWheel(false)
+        f:SetToplevel(false)
+    end
 end
 
 ---@param object Widget @Any interface widget object that supports the methods GetOwner.
@@ -55,15 +216,7 @@ function PPC.GetFullName(name)
     return name
 end
 
-function PPC.ShowApplicantProfile(parent, applicantID, memberIdx)
-    local fullName, class, localizedClass, level, itemLevel, tank, healer, damage, assignedRole, relationship = C_LFGList.GetApplicantMemberInfo(applicantID, memberIdx)
-    if not fullName then
-        return false
-    end
-    if relationship then
-        fullName = PPC.GetFullName(fullName)
-    end
-    local ownerSet, ownerExisted = PPC.SetOwnerSafely(GameTooltip, parent, "ANCHOR_NONE", 0, 0)
+function PPC.ShowPlayerTooltip(fullName)
     local exists = PvPEncountersState[fullName]
     if exists == nil then
         GameTooltip:AddLine("PvP Encounters", nil, nil, nil, 1)
@@ -96,13 +249,25 @@ function PPC.ShowApplicantProfile(parent, applicantID, memberIdx)
         end
         return true, fullName
     end
+end
+
+function PPC.ShowApplicantProfile(parent, applicantID, memberIdx)
+    local fullName, class, localizedClass, level, itemLevel, tank, healer, damage, assignedRole, relationship = C_LFGList.GetApplicantMemberInfo(applicantID, memberIdx)
+    if not fullName then
+        return false
+    end
+    if relationship then
+        fullName = PPC.GetFullName(fullName)
+    end
+    local ownerSet, ownerExisted = PPC.SetOwnerSafely(GameTooltip, parent, "ANCHOR_NONE", 0, 0)
+    PPC.ShowPlayerTooltip(fullName)
     if ownerSet then
         GameTooltip:Hide()
     end
     return false
 end
 
-function PPC.OnEnter(self)
+function PPC.OnEnterApplicant(self)
     local entry = C_LFGList.GetActiveEntryInfo()
     if entry then
         currentResult.activityID = entry.activityID
@@ -116,7 +281,7 @@ function PPC.OnEnter(self)
     end
 end
 
-function PPC.OnLeave(self)
+function PPC.OnLeaveApplicant(self)
     GameTooltip:Hide()
     -- profile:ShowProfile(false, "player", ns.PLAYER_FACTION)
 end
@@ -125,30 +290,14 @@ function PPC.HookApplicantButtons(buttons)
     for _, button in pairs(buttons) do
         if not hooked[button] then
             hooked[button] = true
-            button:HookScript("OnEnter", PPC.OnEnter)
-            button:HookScript("OnLeave", PPC.OnLeave)
+            button:HookScript("OnEnter", PPC.OnEnterApplicant)
+            button:HookScript("OnLeave", PPC.OnLeaveApplicant)
         end
     end
 end
 
 function PPC.OnAddonLoaded(name)
-    for i = 1, 10 do
-        local button = _G["LFGListSearchPanelScrollFrameButton" .. i]
-        button:HookScript("OnLeave", PPC.OnLeave)
-    end
-    -- the player hosting a group looking at applicants
-    for i = 1, 14 do
-        local button = _G["LFGListApplicationViewerScrollFrameButton" .. i]
-        button:HookScript("OnEnter", PPC.OnEnter)
-        button:HookScript("OnLeave", PPC.OnLeave)
-    end
-    -- remove the shroud and allow hovering over people even when not the group leader
-    do
-        local f = _G.LFGListFrame.ApplicationViewer.UnempoweredCover
-        f:EnableMouse(false)
-        f:EnableMouseWheel(false)
-        f:SetToplevel(false)
-    end
+    PPC.LoadModules()
 end
 
 function PPC.AddWinLostToPlayer(player, won, battleground)

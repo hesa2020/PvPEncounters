@@ -199,3 +199,28 @@ do
         assert(silent, "Module expects GetModule(id) where id is a string, and the module must exists, or the silent param must be set to avoid this throw.")
     end
 end
+
+local loadingAgainSoon
+
+function PPC.LoadModules()
+    local modules = PPC:GetModules()
+    local numLoaded = 0
+    local numPending = 0
+    for _, module in ipairs(modules) do
+        if not module:IsLoaded() and module:CanLoad() then
+            if module:HasDependencies() then
+                numLoaded = numLoaded + 1
+                module:Load()
+            else
+                numPending = numPending + 1
+            end
+        end
+    end
+    if not loadingAgainSoon and numLoaded > 0 and numPending > 0 then
+        loadingAgainSoon = true
+        C_Timer.After(1, function()
+            loadingAgainSoon = false
+            PPC.LoadModules()
+        end)
+    end
+end
