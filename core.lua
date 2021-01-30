@@ -95,6 +95,8 @@ function PPC.OnEnterCommunity(self)--TODO
         return
     end
     PPC.ShowPlayerTooltip(nameAndRealm)
+    GameTooltip:SetMinimumWidth(150)
+    GameTooltip:Show()
 end
 
 function PPC.OnLeaveCommunity(self)
