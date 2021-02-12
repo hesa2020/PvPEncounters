@@ -179,8 +179,14 @@ function PPC:ShowPlayerTooltip(fullName, tooltip, addTitle)
         --Fix for older versions
         if type(exists.threesWon) ~= 'number' then
             exists.threesWon = 0;
+        end
+        if type(exists.threesLost) ~= 'number' then
             exists.threesLost = 0;
+        end
+        if type(exists.twosWon) ~= 'number' then
             exists.twosWon = 0;
+        end
+        if type(exists.twosLost) ~= 'number' then
             exists.twosLost = 0;
         end
         --Delete this in older versions...
