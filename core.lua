@@ -179,7 +179,7 @@ function PPC:ShowPlayerTooltip(fullName, tooltip, addTitle)
         --Fix for older versions
         if type(exists.threesWon) ~= 'number' then
             exists.threesWon = 0;
-            exists.twosLost = 0;
+            exists.threesLost = 0;
             exists.twosWon = 0;
             exists.twosLost = 0;
         end
