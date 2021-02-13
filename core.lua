@@ -636,7 +636,7 @@ function PPC.UpdatePVPStatus()
                             for i=1, GetNumBattlefieldScores() do
                                 local name, killingBlows, honorableKills, deaths, honorGained, faction = GetBattlefieldScore(i);
                                 if name ~= nil and name ~= playerName and faction == playerTeamFaction then
-                                    PPC:AddWinLostToPlayer(PPC:GetFullName(name), playerTeamFaction == winningTeamFaction, false, #GetNumBattlefieldScores())
+                                    PPC:AddWinLostToPlayer(PPC:GetFullName(name), playerTeamFaction == winningTeamFaction, false, GetNumBattlefieldScores())
                                 end
                             end
                         else
