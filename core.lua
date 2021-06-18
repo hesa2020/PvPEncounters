@@ -416,22 +416,22 @@ function PPC:ShowPlayerTooltip(fullName, tooltip, addTitle)
             local won = arenaWon + exists.battlegroundWon
             local lost = arenaLost + exists.battlegroundLost
             local winrate = 0
-            if won > 0 and lost > 0 then
-                winrate = math.floor(won * 100 / (won + lost) * 100) / 100
-            else
-                if won > 0 then
-                    winrate = 100
-                else
-                    winrate = 0
+            if won > 0 or lost > 0 then
+                if won < 1 then
+                    won = 0
                 end
-            end
-            if winrate > 50 then
-                tooltip:AddDoubleLine("Overall:", format("%s/%s (%s%%)", won, lost + won, winrate), 1, 1, 1, 0 ,1, 0)
-            else
-                if winrate < 50 and lost > 0 then
-                    tooltip:AddDoubleLine("Overall:", format("%s/%s (%s%%)", won, lost + won, winrate), 1, 1, 1, 1 ,0, 0)
+                if lost < 1 then
+                    lost = 0
+                end
+                winrate = math.floor(won * 100 / (won + lost) * 100) / 100
+                if winrate > 50 then
+                    tooltip:AddDoubleLine("Overall:", format("%s/%s (%s%%)", won, lost + won, winrate), 1, 1, 1, 0 ,1, 0)
                 else
-                    tooltip:AddDoubleLine("Overall:", format("%s/%s (%s%%)", won, lost + won, winrate), 1, 1, 1)
+                    if winrate < 50 and lost > 0 then
+                        tooltip:AddDoubleLine("Overall:", format("%s/%s (%s%%)", won, lost + won, winrate), 1, 1, 1, 1 ,0, 0)
+                    else
+                        tooltip:AddDoubleLine("Overall:", format("%s/%s (%s%%)", won, lost + won, winrate), 1, 1, 1)
+                    end
                 end
             end
             --Agaisnt
@@ -501,22 +501,22 @@ function PPC:ShowPlayerTooltip(fullName, tooltip, addTitle)
             local wonAgaisnt = arenaWonAgaisnt + exists.battlegroundWonAgaisnt
             local lostAgaisnt = arenaLostAgaisnt + exists.battlegroundLostAgaisnt
             local winrateAgaisnt = 0
-            if wonAgaisnt > 0 and lostAgaisnt > 0 then
-                winrateAgaisnt = math.floor(wonAgaisnt * 100 / (wonAgaisnt + lostAgaisnt) * 100) / 100
-            else
-                if wonAgaisnt > 0 then
-                    winrateAgaisnt = 100
-                else
-                    winrateAgaisnt = 0
+            if wonAgaisnt > 0 or lostAgaisnt > 0 then
+                if wonAgaisnt < 1 then
+                    wonAgaisnt = 0
                 end
-            end
-            if winrateAgaisnt > 50 then
-                tooltip:AddDoubleLine("Overall:", format("%s/%s (%s%%)", wonAgaisnt, lostAgaisnt + wonAgaisnt, winrateAgaisnt), 1, 1, 1, 0 ,1, 0)
-            else
-                if winrateAgaisnt < 50 and lostAgaisnt > 0 then
-                    tooltip:AddDoubleLine("Overall:", format("%s/%s (%s%%)", wonAgaisnt, lostAgaisnt + wonAgaisnt, winrateAgaisnt), 1, 1, 1, 1 ,0, 0)
+                if lostAgaisnt < 1 then
+                    lostAgaisnt = 0
+                end
+                winrateAgaisnt = math.floor(wonAgaisnt * 100 / (wonAgaisnt + lostAgaisnt) * 100) / 100
+                if winrateAgaisnt > 50 then
+                    tooltip:AddDoubleLine("Overall:", format("%s/%s (%s%%)", wonAgaisnt, lostAgaisnt + wonAgaisnt, winrateAgaisnt), 1, 1, 1, 0 ,1, 0)
                 else
-                    tooltip:AddDoubleLine("Overall:", format("%s/%s (%s%%)", wonAgaisnt, lostAgaisnt + wonAgaisnt, winrateAgaisnt), 1, 1, 1)
+                    if winrateAgaisnt < 50 and lostAgaisnt > 0 then
+                        tooltip:AddDoubleLine("Overall:", format("%s/%s (%s%%)", wonAgaisnt, lostAgaisnt + wonAgaisnt, winrateAgaisnt), 1, 1, 1, 1 ,0, 0)
+                    else
+                        tooltip:AddDoubleLine("Overall:", format("%s/%s (%s%%)", wonAgaisnt, lostAgaisnt + wonAgaisnt, winrateAgaisnt), 1, 1, 1)
+                    end
                 end
             end
         end
