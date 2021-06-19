@@ -1,4 +1,33 @@
 PvPEncountersState = PvPEncountersState or {}
+PvPEncountersSettings = PvPEncountersSettings or {}
+
+if type(PvPEncountersSettings.format) ~= 'string' then
+    PvPEncountersSettings.format = "win-lose (%)"
+end
+if type(PvPEncountersSettings.ShowBattlegroundsWith) ~= 'boolean' then
+    PvPEncountersSettings.ShowBattlegroundsWith = true
+end
+if type(PvPEncountersSettings.ShowBattlegroundsAgaisnt) ~= 'boolean' then
+    PvPEncountersSettings.ShowBattlegroundsAgaisnt = true
+end
+if type(PvPEncountersSettings.Show2v2sWith) ~= 'boolean' then
+    PvPEncountersSettings.Show2v2sWith = true
+end
+if type(PvPEncountersSettings.Show2v2sAgaisnt) ~= 'boolean' then
+    PvPEncountersSettings.Show2v2sAgaisnt = true
+end
+if type(PvPEncountersSettings.Show3v3sWith) ~= 'boolean' then
+    PvPEncountersSettings.Show3v3sWith = true
+end
+if type(PvPEncountersSettings.Show3v3sAgaisnt) ~= 'boolean' then
+    PvPEncountersSettings.Show3v3sAgaisnt = true
+end
+if type(PvPEncountersSettings.ShowOverallsWith) ~= 'boolean' then
+    PvPEncountersSettings.ShowOverallsWith = true
+end
+if type(PvPEncountersSettings.ShowOverallsAgaisnt) ~= 'boolean' then
+    PvPEncountersSettings.ShowOverallsAgaisnt = true
+end
 
 local PPCAddonName = select(1, ...)
 local PPC = select(2, ...) ---@type ns @The addon namespace.
@@ -19,6 +48,15 @@ local tooltipCommunity = PPC:NewModule("CommunityTooltip")
 local tooltipFriend = PPC:NewModule("FriendTooltip")
 local tooltipGame = PPC:NewModule("GameTooltip")
 local tooltipGuild = PPC:NewModule("GuildTooltip")
+
+local ldb = LibStub:GetLibrary("LibDataBroker-1.1", true)
+if not ldb then return end
+
+local plugin = ldb:NewDataObject(PPCAddonName, {
+	type = "data source",
+	text = "0",
+	icon = "Interface\\AddOns\\PvPEncounters\\Media\\icon",
+})
 
 PPC.VersatilityPerLevel = {
     0, 3.091154721, 3.091154721, 3.091154721, 3.091154721, 3.091154721, 3.091154721, 3.091154721, 3.091154721, 3.091154721, 3.091154721, 3.091154721, 3.245712457, 3.400270193, 3.554827929, 3.709385665, 3.863943401, 4.018501137, 4.173058873, 4.327616609, 4.482174345, 4.636732081, 4.791289817, 4.945847553, 5.100405289, 5.254963025, 5.414083305, 5.579537691, 5.751610634, 5.930600757, 6.11682162, 6.310602529, 6.512289386, 6.722245596, 6.940853023, 7.168513002, 7.405647412, 7.65269981, 7.910136631, 8.178448466, 8.458151403, 8.773380327, 9.100357595, 9.439521059, 9.79132489, 10.15624018, 10.5347556, 10.92737799, 11.33463313, 11.75706636, 12.19524335, 13.46417035, 14.86513044, 16.4118618, 18.11953208, 20.00488711, 22.08641518, 24.38452828, 26.92176229, 29.72299799, 40.0000001
@@ -295,6 +333,14 @@ function PPC:ShowPlayerStatistics(tooltip, fullName)
     --end
 end
 
+function PPC:FormatStatistics(won, lost, winrate)
+    if PvPEncountersSettings.format == "win-lose (%)" then
+        return format("%s-%s (%s%%)", won, lost, winrate)
+    else
+        return format("%s/%s (%s%%)", won, lost + won, winrate)
+    end
+end
+
 function PPC:ShowPlayerTooltip(fullName, tooltip, addTitle)
     local exists = PvPEncountersState[fullName]
     if exists == nil then
@@ -362,13 +408,15 @@ function PPC:ShowPlayerTooltip(fullName, tooltip, addTitle)
                     exists.battlegroundLost = 0
                 end
                 bgwinrate = math.floor(exists.battlegroundWon * 100 / (exists.battlegroundWon + exists.battlegroundLost) * 100) / 100
-                if bgwinrate > 50 then
-                    tooltip:AddDoubleLine("Battlegrounds:", format("%s/%s (%s%%)", exists.battlegroundWon, exists.battlegroundLost + exists.battlegroundWon, bgwinrate), 1, 1, 1, 0 ,1, 0)
-                else
-                    if bgwinrate < 50 and exists.battlegroundLost > 0 then
-                        tooltip:AddDoubleLine("Battlegrounds:", format("%s/%s (%s%%)", exists.battlegroundWon, exists.battlegroundLost + exists.battlegroundWon, bgwinrate), 1, 1, 1, 1 ,0, 0)
+                if PvPEncountersSettings.ShowBattlegroundsWith then
+                    if bgwinrate > 50 then
+                        tooltip:AddDoubleLine("Battlegrounds:", PPC:FormatStatistics(exists.battlegroundWon, exists.battlegroundLost, bgwinrate), 1, 1, 1, 0 ,1, 0)
                     else
-                        tooltip:AddDoubleLine("Battlegrounds:", format("%s/%s (%s%%)", exists.battlegroundWon, exists.battlegroundLost + exists.battlegroundWon, bgwinrate), 1, 1, 1, 1 ,1, 1)
+                        if bgwinrate < 50 and exists.battlegroundLost > 0 then
+                            tooltip:AddDoubleLine("Battlegrounds:", PPC:FormatStatistics(exists.battlegroundWon, exists.battlegroundLost, bgwinrate) , 1, 1, 1, 1 ,0, 0)
+                        else
+                            tooltip:AddDoubleLine("Battlegrounds:", PPC:FormatStatistics(exists.battlegroundWon, exists.battlegroundLost, bgwinrate), 1, 1, 1, 1 ,1, 1)
+                        end
                     end
                 end
             end
@@ -382,13 +430,15 @@ function PPC:ShowPlayerTooltip(fullName, tooltip, addTitle)
                     exists.twosLost = 0
                 end
                 arena2winrate = math.floor(exists.twosWon * 100 / (exists.twosWon + exists.twosLost) * 100) / 100
-                if arena2winrate > 50 then
-                    tooltip:AddDoubleLine("2v2:", format("%s/%s (%s%%)", exists.twosWon, exists.twosLost + exists.twosWon, arena2winrate), 1, 1, 1, 0 ,1, 0)
-                else
-                    if arena2winrate < 50 and exists.twosLost > 0 then
-                        tooltip:AddDoubleLine("2v2:", format("%s/%s (%s%%)", exists.twosWon, exists.twosLost + exists.twosWon, arena2winrate), 1, 1, 1, 1 ,0, 0)
+                if PvPEncountersSettings.Show2v2sWith then
+                    if arena2winrate > 50 then
+                        tooltip:AddDoubleLine("2v2:", PPC:FormatStatistics(exists.twosWon, exists.twosLost, arena2winrate), 1, 1, 1, 0 ,1, 0)
                     else
-                        tooltip:AddDoubleLine("2v2:", format("%s/%s (%s%%)", exists.twosWon, exists.twosLost + exists.twosWon, arena2winrate), 1, 1, 1, 1 ,1, 1)
+                        if arena2winrate < 50 and exists.twosLost > 0 then
+                            tooltip:AddDoubleLine("2v2:", PPC:FormatStatistics(exists.twosWon, exists.twosLost, arena2winrate), 1, 1, 1, 1 ,0, 0)
+                        else
+                            tooltip:AddDoubleLine("2v2:", PPC:FormatStatistics(exists.twosWon, exists.twosLost, arena2winrate), 1, 1, 1, 1 ,1, 1)
+                        end
                     end
                 end
             end
@@ -402,13 +452,15 @@ function PPC:ShowPlayerTooltip(fullName, tooltip, addTitle)
                     exists.threesLost = 0
                 end
                 arena3winrate = math.floor(exists.threesWon * 100 / (exists.threesWon + exists.threesLost) * 100) / 100
-                if arena3winrate > 50 then
-                    tooltip:AddDoubleLine("3v3:", format("%s/%s (%s%%)", exists.threesWon, exists.threesLost + exists.threesWon, arena3winrate), 1, 1, 1, 0 ,1, 0)
-                else
-                    if arena3winrate < 50 and exists.threesLost > 0 then
-                        tooltip:AddDoubleLine("3v3:", format("%s/%s (%s%%)", exists.threesWon, exists.threesLost + exists.threesWon, arena3winrate), 1, 1, 1, 1 ,0, 0)
+                if PvPEncountersSettings.Show3v3sWith then
+                    if arena3winrate > 50 then
+                        tooltip:AddDoubleLine("3v3:", PPC:FormatStatistics(exists.threesWon, exists.threesLost, arena3winrate), 1, 1, 1, 0 ,1, 0)
                     else
-                        tooltip:AddDoubleLine("3v3:", format("%s/%s (%s%%)", exists.threesWon, exists.threesLost + exists.threesWon, arena3winrate), 1, 1, 1)
+                        if arena3winrate < 50 and exists.threesLost > 0 then
+                            tooltip:AddDoubleLine("3v3:", PPC:FormatStatistics(exists.threesWon, exists.threesLost, arena3winrate), 1, 1, 1, 1 ,0, 0)
+                        else
+                            tooltip:AddDoubleLine("3v3:", PPC:FormatStatistics(exists.threesWon, exists.threesLost, arena3winrate), 1, 1, 1)
+                        end
                     end
                 end
             end
@@ -424,13 +476,15 @@ function PPC:ShowPlayerTooltip(fullName, tooltip, addTitle)
                     lost = 0
                 end
                 winrate = math.floor(won * 100 / (won + lost) * 100) / 100
-                if winrate > 50 then
-                    tooltip:AddDoubleLine("Overall:", format("%s/%s (%s%%)", won, lost + won, winrate), 1, 1, 1, 0 ,1, 0)
-                else
-                    if winrate < 50 and lost > 0 then
-                        tooltip:AddDoubleLine("Overall:", format("%s/%s (%s%%)", won, lost + won, winrate), 1, 1, 1, 1 ,0, 0)
+                if PvPEncountersSettings.ShowOverallsWith then
+                    if winrate > 50 then
+                        tooltip:AddDoubleLine("Overall with:", PPC:FormatStatistics(won, lost, winrate), 1, 1, 1, 0 ,1, 0)
                     else
-                        tooltip:AddDoubleLine("Overall:", format("%s/%s (%s%%)", won, lost + won, winrate), 1, 1, 1)
+                        if winrate < 50 and lost > 0 then
+                            tooltip:AddDoubleLine("Overall with:", PPC:FormatStatistics(won, lost, winrate), 1, 1, 1, 1 ,0, 0)
+                        else
+                            tooltip:AddDoubleLine("Overall with:", PPC:FormatStatistics(won, lost, winrate), 1, 1, 1)
+                        end
                     end
                 end
             end
@@ -447,13 +501,15 @@ function PPC:ShowPlayerTooltip(fullName, tooltip, addTitle)
                     exists.battlegroundLosAgaisntt = 0
                 end
                 bgwinrateAgaisnt = math.floor(exists.battlegroundWonAgaisnt * 100 / (exists.battlegroundWonAgaisnt + exists.battlegroundLostAgaisnt) * 100) / 100
-                if bgwinrateAgaisnt > 50 then
-                    tooltip:AddDoubleLine("Battlegrounds Agaisnt:", format("%s/%s (%s%%)", exists.battlegroundWonAgaisnt, exists.battlegroundLostAgaisnt + exists.battlegroundWonAgaisnt, bgwinrateAgaisnt), 1, 1, 1, 0 ,1, 0)
-                else
-                    if bgwinrateAgaisnt < 50 and exists.battlegroundLostAgaisnt > 0 then
-                        tooltip:AddDoubleLine("Battlegrounds:", format("%s/%s (%s%%)", exists.battlegroundWonAgaisnt, exists.battlegroundLostAgaisnt + exists.battlegroundWonAgaisnt, bgwinrateAgaisnt), 1, 1, 1, 1 ,0, 0)
+                if PvPEncountersSettings.ShowBattlegroundsAgaisnt then
+                    if bgwinrateAgaisnt > 50 then
+                        tooltip:AddDoubleLine("Battlegrounds agaisnt:", PPC:FormatStatistics(exists.battlegroundWonAgaisnt, exists.battlegroundLostAgaisnt, bgwinrateAgaisnt), 1, 1, 1, 0 ,1, 0)
                     else
-                        tooltip:AddDoubleLine("Battlegrounds:", format("%s/%s (%s%%)", exists.battlegroundWonAgaisnt, exists.battlegroundLostAgaisnt + exists.battlegroundWonAgaisnt, bgwinrateAgaisnt), 1, 1, 1, 1 ,1, 1)
+                        if bgwinrateAgaisnt < 50 and exists.battlegroundLostAgaisnt > 0 then
+                            tooltip:AddDoubleLine("Battlegrounds agaisnt:", PPC:FormatStatistics(exists.battlegroundWonAgaisnt, exists.battlegroundLostAgaisnt, bgwinrateAgaisnt), 1, 1, 1, 1 ,0, 0)
+                        else
+                            tooltip:AddDoubleLine("Battlegrounds agaisnt:", PPC:FormatStatistics(exists.battlegroundWonAgaisnt, exists.battlegroundLostAgaisnt, bgwinrateAgaisnt), 1, 1, 1, 1 ,1, 1)
+                        end
                     end
                 end
             end
@@ -467,13 +523,15 @@ function PPC:ShowPlayerTooltip(fullName, tooltip, addTitle)
                     exists.twosLostAgaisnt = 0
                 end
                 arena2winrateAgaisnt = math.floor(exists.twosWonAgaisnt * 100 / (exists.twosWonAgaisnt + exists.twosLostAgaisnt) * 100) / 100
-                if arena2winrateAgaisnt > 50 then
-                    tooltip:AddDoubleLine("2v2:", format("%s/%s (%s%%)", exists.twosWonAgaisnt, exists.twosLostAgaisnt + exists.twosWonAgaisnt, arena2winrateAgaisnt), 1, 1, 1, 0 ,1, 0)
-                else
-                    if arena2winrateAgaisnt < 50 and exists.twosLostAgaisnt > 0 then
-                        tooltip:AddDoubleLine("2v2:", format("%s/%s (%s%%)", exists.twosWonAgaisnt, exists.twosLostAgaisnt + exists.twosWonAgaisnt, arena2winrateAgaisnt), 1, 1, 1, 1 ,0, 0)
+                if PvPEncountersSettings.Show2v2sAgaisnt then
+                    if arena2winrateAgaisnt > 50 then
+                        tooltip:AddDoubleLine("2v2 agaisnt:", PPC:FormatStatistics(exists.twosWonAgaisnt, exists.twosLostAgaisnt, arena2winrateAgaisnt), 1, 1, 1, 0 ,1, 0)
                     else
-                        tooltip:AddDoubleLine("2v2:", format("%s/%s (%s%%)", exists.twosWonAgaisnt, exists.twosLostAgaisnt + exists.twosWonAgaisnt, arena2winrateAgaisnt), 1, 1, 1, 1 ,1, 1)
+                        if arena2winrateAgaisnt < 50 and exists.twosLostAgaisnt > 0 then
+                            tooltip:AddDoubleLine("2v2 agaisnt:", PPC:FormatStatistics(exists.twosWonAgaisnt, exists.twosLostAgaisnt, arena2winrateAgaisnt), 1, 1, 1, 1 ,0, 0)
+                        else
+                            tooltip:AddDoubleLine("2v2 agaisnt:", PPC:FormatStatistics(exists.twosWonAgaisnt, exists.twosLostAgaisnt, arena2winrateAgaisnt), 1, 1, 1, 1 ,1, 1)
+                        end
                     end
                 end
             end
@@ -487,13 +545,15 @@ function PPC:ShowPlayerTooltip(fullName, tooltip, addTitle)
                     exists.threesLostAgaisnt = 0
                 end
                 arena3winrateAgaisnt = math.floor(exists.threesWonAgaisnt * 100 / (exists.threesWonAgaisnt + exists.threesLostAgaisnt) * 100) / 100
-                if arena3winrateAgaisnt > 50 then
-                    tooltip:AddDoubleLine("3v3:", format("%s/%s (%s%%)", exists.threesWonAgaisnt, exists.threesLostAgaisnt + exists.threesWonAgaisnt, arena3winrateAgaisnt), 1, 1, 1, 0 ,1, 0)
-                else
-                    if arena3winrateAgaisnt < 50 and exists.threesLostAgaisnt > 0 then
-                        tooltip:AddDoubleLine("3v3:", format("%s/%s (%s%%)", exists.threesWonAgaisnt, exists.threesLostAgaisnt + exists.threesWonAgaisnt, arena3winrateAgaisnt), 1, 1, 1, 1 ,0, 0)
+                if PvPEncountersSettings.Show3v3sAgaisnt then
+                    if arena3winrateAgaisnt > 50 then
+                        tooltip:AddDoubleLine("3v3 agaisnt:", PPC:FormatStatistics(exists.threesWonAgaisnt, exists.threesLostAgaisnt, arena3winrateAgaisnt), 1, 1, 1, 0 ,1, 0)
                     else
-                        tooltip:AddDoubleLine("3v3:", format("%s/%s (%s%%)", exists.threesWonAgaisnt, exists.threesLostAgaisnt + exists.threesWonAgaisnt, arena3winrateAgaisnt), 1, 1, 1)
+                        if arena3winrateAgaisnt < 50 and exists.threesLostAgaisnt > 0 then
+                            tooltip:AddDoubleLine("3v3 agaisnt:", PPC:FormatStatistics(exists.threesWonAgaisnt, exists.threesLostAgaisnt, arena3winrateAgaisnt), 1, 1, 1, 1 ,0, 0)
+                        else
+                            tooltip:AddDoubleLine("3v3 agaisnt:", PPC:FormatStatistics(exists.threesWonAgaisnt, exists.threesLostAgaisnt, arena3winrateAgaisnt), 1, 1, 1)
+                        end
                     end
                 end
             end
@@ -509,13 +569,15 @@ function PPC:ShowPlayerTooltip(fullName, tooltip, addTitle)
                     lostAgaisnt = 0
                 end
                 winrateAgaisnt = math.floor(wonAgaisnt * 100 / (wonAgaisnt + lostAgaisnt) * 100) / 100
-                if winrateAgaisnt > 50 then
-                    tooltip:AddDoubleLine("Overall:", format("%s/%s (%s%%)", wonAgaisnt, lostAgaisnt + wonAgaisnt, winrateAgaisnt), 1, 1, 1, 0 ,1, 0)
-                else
-                    if winrateAgaisnt < 50 and lostAgaisnt > 0 then
-                        tooltip:AddDoubleLine("Overall:", format("%s/%s (%s%%)", wonAgaisnt, lostAgaisnt + wonAgaisnt, winrateAgaisnt), 1, 1, 1, 1 ,0, 0)
+                if PvPEncountersSettings.ShowOverallsAgaisnt then
+                    if winrateAgaisnt > 50 then
+                        tooltip:AddDoubleLine("Overall agaisnt:", PPC:FormatStatistics(wonAgaisnt, lostAgaisnt, winrateAgaisnt), 1, 1, 1, 0 ,1, 0)
                     else
-                        tooltip:AddDoubleLine("Overall:", format("%s/%s (%s%%)", wonAgaisnt, lostAgaisnt + wonAgaisnt, winrateAgaisnt), 1, 1, 1)
+                        if winrateAgaisnt < 50 and lostAgaisnt > 0 then
+                            tooltip:AddDoubleLine("Overall agaisnt:", PPC:FormatStatistics(wonAgaisnt, lostAgaisnt, winrateAgaisnt), 1, 1, 1, 1 ,0, 0)
+                        else
+                            tooltip:AddDoubleLine("Overall agaisnt:", PPC:FormatStatistics(wonAgaisnt, lostAgaisnt, winrateAgaisnt), 1, 1, 1)
+                        end
                     end
                 end
             end
@@ -723,8 +785,6 @@ function PPC:CalculateTeamAverage()
     end
 end
 
---
-
 function PPC.FriendsTooltip_Show(self)
     if not tooltipFriend:IsEnabled() then
         return
@@ -803,8 +863,12 @@ function PPC.OnEnterCommunity(self)
     local nameAndRealm
     if type(self.GetMemberInfo) == "function" then
         local info = self:GetMemberInfo()
-        clubType = info.clubType
-        nameAndRealm = PPC:GetFullName(info.name)
+        if info ~= nil then
+            clubType = info.clubType
+            nameAndRealm = PPC:GetFullName(info.name)
+        else
+            return
+        end
     elseif type(self.cardInfo) == "table" then
         nameAndRealm = PPC:GetNameRealm(self.cardInfo.guildLeader)
     else
@@ -994,3 +1058,167 @@ PPC_FRAME:RegisterEvent("UPDATE_BATTLEFIELD_STATUS")
 PPC_FRAME:RegisterEvent("UPDATE_EXPANSION_LEVEL")
 -- PPC_FRAME:RegisterEvent("INSPECT_READY")
 PPC_FRAME:SetScript("OnEvent", PPC.OnEvent)
+
+local f = CreateFrame("Frame")
+f:SetScript("OnEvent", function()
+	local icon = LibStub("LibDBIcon-1.0", true)
+	if not icon then return end
+	if not PPCLDBIconDB then PPCLDBIconDB = {} end
+	icon:Register(PPCAddonName, plugin, PPCLDBIconDB)
+end)
+f:RegisterEvent("PLAYER_LOGIN")
+
+-- Settings
+local PPC_SETTINGS_FRAME = CreateFrame("FRAME")
+PPC_SETTINGS_FRAME.name = "PvP Encounters"
+PPC_SETTINGS_FRAME:Hide()
+PPC_SETTINGS_FRAME:SetScript("OnShow", function(frame)
+	local function newCheckbox(label, description, onClick)
+		local check = CreateFrame("CheckButton", "PPCCheck" .. label, frame, "InterfaceOptionsCheckButtonTemplate")
+		check:SetScript("OnClick", function(self)
+			local tick = self:GetChecked()
+			onClick(self, tick and true or false)
+			if tick then
+				PlaySound(856) -- SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON
+			else
+				PlaySound(857) -- SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF
+			end
+		end)
+		check.label = _G[check:GetName() .. "Text"]
+		check.label:SetText(label)
+		check.tooltipText = label
+		check.tooltipRequirement = description
+		return check
+	end
+
+    local function newDropdown(name, values, initialValue, getSettingValue, onChange)
+        local info = {}
+        local dropdown = CreateFrame("Frame", name, frame, "UIDropDownMenuTemplate")
+        dropdown.initialize = function()
+            wipe(info)
+            for _, value in next, values do
+                info.text = value
+                info.value = value
+                info.func = onChange
+                info.checked = value == getSettingValue()
+                UIDropDownMenu_AddButton(info)
+            end
+        end
+        return dropdown;
+	end
+
+	local title = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+	title:SetPoint("TOPLEFT", 16, -16)
+	title:SetText(PPCAddonName)
+
+	local battlegroundsWithCheckbox = newCheckbox(
+		"Show Battlegrounds With",
+		"Show battleground statistics inside the tooltip of characters you played with.",
+		function(self, value)
+            PvPEncountersSettings.ShowBattlegroundsWith = value
+        end
+    )
+    battlegroundsWithCheckbox:SetChecked(PvPEncountersSettings.ShowBattlegroundsWith)
+    battlegroundsWithCheckbox:SetPoint("TOPLEFT", title, "BOTTOMLEFT", -2, -16)
+
+    local battlegroundsAgaisntCheckbox = newCheckbox(
+		"Show Battlegrounds Agaisnt",
+		"Show battleground statistics inside the tooltip of characters you played agaisnt.",
+		function(self, value)
+            PvPEncountersSettings.ShowBattlegroundsAgaisnt = value
+        end
+    )
+    battlegroundsAgaisntCheckbox:SetChecked(PvPEncountersSettings.ShowBattlegroundsAgaisnt)
+    battlegroundsAgaisntCheckbox:SetPoint("LEFT", battlegroundsWithCheckbox, "RIGHT", 200, 0)
+
+	local twovtwosWithCheckbox = newCheckbox(
+		"Show 2v2 With",
+		"Show 2v2 statistics inside the tooltip of characters you played with.",
+		function(self, value)
+            PvPEncountersSettings.Show2v2sWith = value
+        end
+    )
+    twovtwosWithCheckbox:SetChecked(PvPEncountersSettings.Show2v2sWith)
+    twovtwosWithCheckbox:SetPoint("TOPLEFT", battlegroundsWithCheckbox, "BOTTOMLEFT", 0, -8)
+
+    local twovtwosAgaisntCheckbox = newCheckbox(
+		"Show 2v2 Agaisnt",
+		"Show 2v2 statistics inside the tooltip of characters you played agaisnt.",
+		function(self, value)
+            PvPEncountersSettings.Show2v2sAgaisnt = value
+        end
+    )
+    twovtwosAgaisntCheckbox:SetChecked(PvPEncountersSettings.Show2v2sAgaisnt)
+    twovtwosAgaisntCheckbox:SetPoint("LEFT", twovtwosWithCheckbox, "RIGHT", 200, 0)
+
+	local threevthreesWithCheckbox = newCheckbox(
+		"Show 3v3 With",
+		"Show 3v3 statistics inside the tooltip of characters you played with.",
+		function(self, value)
+            PvPEncountersSettings.Show3v3sWith = value
+        end
+    )
+    threevthreesWithCheckbox:SetChecked(PvPEncountersSettings.Show3v3sWith)
+    threevthreesWithCheckbox:SetPoint("TOPLEFT", twovtwosWithCheckbox, "BOTTOMLEFT", 0, -8)
+
+    local threevthreesAgaisntCheckbox = newCheckbox(
+		"Show 3v3 Agaisnt",
+		"Show 2v2 statistics inside the tooltip of characters you played agaisnt.",
+		function(self, value)
+            PvPEncountersSettings.Show3v3sAgaisnt = value
+        end
+    )
+    threevthreesAgaisntCheckbox:SetChecked(PvPEncountersSettings.Show3v3sAgaisnt)
+    threevthreesAgaisntCheckbox:SetPoint("LEFT", threevthreesWithCheckbox, "RIGHT", 200, 0)
+
+	local overallsWithCheckbox = newCheckbox(
+		"Show Overall With",
+		"Show overall statistics inside the tooltip of characters you played with.",
+		function(self, value)
+            PvPEncountersSettings.ShowOverallsWith = value
+        end
+    )
+    overallsWithCheckbox:SetChecked(PvPEncountersSettings.ShowOverallsWith)
+    overallsWithCheckbox:SetPoint("TOPLEFT", threevthreesWithCheckbox, "BOTTOMLEFT", 0, -8)
+
+    local overallsAgaisntCheckbox = newCheckbox(
+		"Show Overall Agaisnt",
+		"Show overall statistics inside the tooltip of characters you played agaisnt.",
+		function(self, value)
+            PvPEncountersSettings.ShowOverallsAgaisnt = value
+        end
+    )
+    overallsAgaisntCheckbox:SetChecked(PvPEncountersSettings.ShowOverallsAgaisnt)
+    overallsAgaisntCheckbox:SetPoint("LEFT", overallsWithCheckbox, "RIGHT", 200, 0)
+
+    local minimap = newCheckbox(
+		"Show Minimap Icon",
+		"Show the icon button arround the minimap.",
+		function(self, value)
+			PPCLDBIconDB.hide = not value
+			if PPCLDBIconDB.hide then
+				LibStub("LibDBIcon-1.0"):Hide(PPCAddonName)
+			else
+				LibStub("LibDBIcon-1.0"):Show(PPCAddonName)
+			end
+		end
+    )
+	minimap:SetChecked(not PPCLDBIconDB.hide)
+	minimap:SetPoint("TOPLEFT", overallsWithCheckbox, "BOTTOMLEFT", 0, -8)
+
+    local formatDropdown = newDropdown("PPCFormat", {"win-lose (%)", "win/total (%)"}, "", function()
+        return PvPEncountersSettings.format
+    end,
+    function(self)
+        PvPEncountersSettings.format = self.value
+        PPCFormatText:SetText(self:GetText())
+    end)
+	formatDropdown:SetPoint("TOPLEFT", minimap, "BOTTOMLEFT", -15, -10)
+	PPCFormatText:SetText("Format")
+
+	frame:SetScript("OnShow", nil)
+end)
+InterfaceOptions_AddCategory(PPC_SETTINGS_FRAME)
+function plugin.OnClick(self, button)
+    InterfaceOptionsFrame_OpenToCategory("PvP Encounters")
+end
