@@ -1022,7 +1022,7 @@ function PPC.UpdatePVPStatus()
                                     PPC:AddWinLostToPlayer(PPC:GetFullName(name), playerTeamFaction == winningTeamFaction, true, nil)
                                 end
                                 if name ~= nil and name ~= playerName and faction ~= playerTeamFaction then
-                                    PPC:AddWinLostAgaisntPlayer(PPC:GetFullName(name), playerTeamFaction ~= winningTeamFaction, true, nil)
+                                    PPC:AddWinLostAgaisntPlayer(PPC:GetFullName(name), playerTeamFaction == winningTeamFaction, true, nil)
                                 end
                             end
                         end
