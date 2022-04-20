@@ -1009,20 +1009,20 @@ function PPC.UpdatePVPStatus()
                             for i=1, GetNumBattlefieldScores() do
                                 local name, killingBlows, honorableKills, deaths, honorGained, faction = GetBattlefieldScore(i);
                                 if name ~= nil and name ~= playerName and faction == playerTeamFaction then
-                                    PPC:AddWinLostToPlayer(PPC:GetFullName(name), playerTeamFaction == winningTeamFaction, false, GetNumBattlefieldScores())
+                                    PPC:AddWinLostToPlayer(PPC:GetFullName(name), faction == winningTeamFaction, false, GetNumBattlefieldScores())
                                 end
                                 if name ~= nil and name ~= playerName and faction ~= playerTeamFaction then
-                                    PPC:AddWinLostAgaisntPlayer(PPC:GetFullName(name), playerTeamFaction ~= winningTeamFaction, false, GetNumBattlefieldScores())
+                                    PPC:AddWinLostAgaisntPlayer(PPC:GetFullName(name), faction ~= winningTeamFaction, false, GetNumBattlefieldScores())
                                 end
                             end
                         else
                             for i=1, GetNumBattlefieldScores() do
                                 local name, killingBlows, honorableKills, deaths, honorGained, faction = GetBattlefieldScore(i);
                                 if name ~= nil and name ~= playerName and faction == playerTeamFaction then
-                                    PPC:AddWinLostToPlayer(PPC:GetFullName(name), playerTeamFaction == winningTeamFaction, true, nil)
+                                    PPC:AddWinLostToPlayer(PPC:GetFullName(name), faction == winningTeamFaction, true, nil)
                                 end
                                 if name ~= nil and name ~= playerName and faction ~= playerTeamFaction then
-                                    PPC:AddWinLostAgaisntPlayer(PPC:GetFullName(name), playerTeamFaction == winningTeamFaction, true, nil)
+                                    PPC:AddWinLostAgaisntPlayer(PPC:GetFullName(name), faction ~= winningTeamFaction, true, nil)
                                 end
                             end
                         end
