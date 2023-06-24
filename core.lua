@@ -1,4 +1,4 @@
-PvPEncountersState = PvPEncountersState or {}
+PvPEncountersState    = PvPEncountersState or {}
 PvPEncountersSettings = PvPEncountersSettings or {}
 
 if type(PvPEncountersSettings.format) ~= 'string' then
@@ -27,6 +27,9 @@ if type(PvPEncountersSettings.ShowOverallsWith) ~= 'boolean' then
 end
 if type(PvPEncountersSettings.ShowOverallsAgaisnt) ~= 'boolean' then
     PvPEncountersSettings.ShowOverallsAgaisnt = true
+end
+if type(PvPEncountersSettings.HideMinimapIcon) ~= 'boolean' then
+    PvPEncountersSettings.HideMinimapIcon = false
 end
 
 local PPCAddonName = select(1, ...)
@@ -61,6 +64,63 @@ local plugin = ldb:NewDataObject(PPCAddonName, {
 PPC.VersatilityPerLevel = {
     0, 3.091154721, 3.091154721, 3.091154721, 3.091154721, 3.091154721, 3.091154721, 3.091154721, 3.091154721, 3.091154721, 3.091154721, 3.091154721, 3.245712457, 3.400270193, 3.554827929, 3.709385665, 3.863943401, 4.018501137, 4.173058873, 4.327616609, 4.482174345, 4.636732081, 4.791289817, 4.945847553, 5.100405289, 5.254963025, 5.414083305, 5.579537691, 5.751610634, 5.930600757, 6.11682162, 6.310602529, 6.512289386, 6.722245596, 6.940853023, 7.168513002, 7.405647412, 7.65269981, 7.910136631, 8.178448466, 8.458151403, 8.773380327, 9.100357595, 9.439521059, 9.79132489, 10.15624018, 10.5347556, 10.92737799, 11.33463313, 11.75706636, 12.19524335, 13.46417035, 14.86513044, 16.4118618, 18.11953208, 20.00488711, 22.08641518, 24.38452828, 26.92176229, 29.72299799, 40.0000001
 }
+
+local ScrollBoxUtil do
+
+    ScrollBoxUtil = {}
+
+    ---@class CallbackRegistryMixin
+    ---@field public RegisterCallback fun(event: string|any, callback: fun())
+
+    ---@class ScrollBoxBaseMixin : CallbackRegistryMixin
+    ---@field public GetFrames fun(): Frame[]
+    ---@field public Update fun()
+
+    ---@param scrollBox ScrollBoxBaseMixin
+    ---@param callback fun(frames: Button[], scrollBox: ScrollBoxBaseMixin)
+    function ScrollBoxUtil:OnViewFramesChanged(scrollBox, callback)
+        if not scrollBox then
+            return
+        end
+        if scrollBox.buttons then -- TODO: legacy 9.X support
+            callback(scrollBox.buttons, scrollBox)
+            return 1
+        end
+        if scrollBox.RegisterCallback then
+            local frames = scrollBox:GetFrames()
+            if frames and frames[1] then
+                callback(frames, scrollBox)
+            end
+            scrollBox:RegisterCallback(ScrollBoxListMixin.Event.OnUpdate, function()
+                frames = scrollBox:GetFrames()
+                callback(frames, scrollBox)
+            end)
+            return true
+        end
+        return false
+    end
+
+    ---@param scrollBox ScrollBoxBaseMixin
+    ---@param callback fun(self: ScrollBoxBaseMixin)
+    function ScrollBoxUtil:OnViewScrollChanged(scrollBox, callback)
+        if not scrollBox then
+            return
+        end
+        local function wrappedCallback()
+            callback(scrollBox)
+        end
+        if scrollBox.update then -- TODO: legacy 9.X support
+            hooksecurefunc(scrollBox, "update", wrappedCallback)
+            return 1
+        end
+        if scrollBox.RegisterCallback then
+            scrollBox:RegisterCallback(ScrollBoxListMixin.Event.OnScroll, wrappedCallback)
+            return true
+        end
+        return false
+    end
+
+end
 
 function PPC:ExecuteWidgetHandler(object, handler, ...)
     if type(object) ~= "table" or type(object.GetScript) ~= "function" then
@@ -713,7 +773,8 @@ end
 
 function tooltipGame:OnLoad()
     self:Enable()
-    GameTooltip:HookScript("OnTooltipSetUnit", PPC.OnGameTooltipSetUnit)
+    -- GameTooltip:HookScript("OnTooltipSetUnit", PPC.OnGameTooltipSetUnit)
+    TooltipDataProcessor.AddTooltipPreCall(Enum.TooltipDataType.Unit, PPC.OnGameTooltipCleared)
     GameTooltip:HookScript("OnTooltipCleared", PPC.OnGameTooltipCleared)
     GameTooltip:HookScript("OnHide", PPC.OnGameTooltipHidden)
 end
@@ -724,20 +785,33 @@ end
 
 function tooltipCommunity:OnLoad()
     self:Enable()
-    hooksecurefunc(_G.CommunitiesFrame.MemberList, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
-    hooksecurefunc(_G.CommunitiesFrame.MemberList, "Update", PPC.OnScrollCommunity)
-    hooksecurefunc(_G.ClubFinderGuildFinderFrame.CommunityCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
-    hooksecurefunc(_G.ClubFinderGuildFinderFrame.CommunityCards.ListScrollFrame, "update", PPC.OnScrollCommunity)
-    hooksecurefunc(_G.ClubFinderGuildFinderFrame.PendingCommunityCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
-    hooksecurefunc(_G.ClubFinderGuildFinderFrame.PendingCommunityCards.ListScrollFrame, "update", PPC.OnScrollCommunity)
+
+    ScrollBoxUtil:OnViewFramesChanged(_G.CommunitiesFrame.MemberList.ScrollBox, PPC.SmartHookButtonsCommunity) -- TODO: DF
+    ScrollBoxUtil:OnViewScrollChanged(_G.CommunitiesFrame.MemberList.ScrollBox, PPC.OnScrollCommunity) -- TODO: DF
+    ScrollBoxUtil:OnViewFramesChanged(_G.ClubFinderGuildFinderFrame.CommunityCards.ScrollBox, PPC.SmartHookButtonsCommunity) -- TODO: DF
+    ScrollBoxUtil:OnViewScrollChanged(_G.ClubFinderGuildFinderFrame.CommunityCards.ScrollBox, PPC.OnScrollCommunity) -- TODO: DF
+    ScrollBoxUtil:OnViewFramesChanged(_G.ClubFinderGuildFinderFrame.PendingCommunityCards.ScrollBox, PPC.SmartHookButtonsCommunity) -- TODO: DF
+    ScrollBoxUtil:OnViewScrollChanged(_G.ClubFinderGuildFinderFrame.PendingCommunityCards.ScrollBox, PPC.OnScrollCommunity) -- TODO: DF
+    ScrollBoxUtil:OnViewFramesChanged(_G.ClubFinderCommunityAndGuildFinderFrame.CommunityCards.ScrollBox, PPC.SmartHookButtonsCommunity) -- TODO: DF
+    ScrollBoxUtil:OnViewScrollChanged(_G.ClubFinderCommunityAndGuildFinderFrame.CommunityCards.ScrollBox, PPC.OnScrollCommunity) -- TODO: DF
+    ScrollBoxUtil:OnViewFramesChanged(_G.ClubFinderCommunityAndGuildFinderFrame.PendingCommunityCards.ScrollBox, PPC.SmartHookButtonsCommunity) -- TODO: DF
+    ScrollBoxUtil:OnViewScrollChanged(_G.ClubFinderCommunityAndGuildFinderFrame.PendingCommunityCards.ScrollBox, PPC.OnScrollCommunity) -- TODO: DF
     hooksecurefunc(_G.ClubFinderGuildFinderFrame.GuildCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
     hooksecurefunc(_G.ClubFinderGuildFinderFrame.PendingGuildCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
-    hooksecurefunc(_G.ClubFinderCommunityAndGuildFinderFrame.CommunityCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
-    hooksecurefunc(_G.ClubFinderCommunityAndGuildFinderFrame.CommunityCards.ListScrollFrame, "update", PPC.OnScrollCommunity)
-    hooksecurefunc(_G.ClubFinderCommunityAndGuildFinderFrame.PendingCommunityCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
-    hooksecurefunc(_G.ClubFinderCommunityAndGuildFinderFrame.PendingCommunityCards.ListScrollFrame, "update", PPC.OnScrollCommunity)
     hooksecurefunc(_G.ClubFinderCommunityAndGuildFinderFrame.GuildCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
     hooksecurefunc(_G.ClubFinderCommunityAndGuildFinderFrame.PendingGuildCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
+
+    -- hooksecurefunc(_G.CommunitiesFrame.MemberList, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
+    -- hooksecurefunc(_G.CommunitiesFrame.MemberList, "Update", PPC.OnScrollCommunity)
+    -- hooksecurefunc(_G.ClubFinderGuildFinderFrame.CommunityCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
+    -- --CommunitiesFrame.MemberList
+    -- hooksecurefunc(_G.ClubFinderGuildFinderFrame.CommunityCards.ScrollBox, "OnScroll", PPC.OnScrollCommunity)
+    -- hooksecurefunc(_G.ClubFinderGuildFinderFrame.PendingCommunityCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
+    -- hooksecurefunc(_G.ClubFinderGuildFinderFrame.PendingCommunityCards.ListScrollFrame, "update", PPC.OnScrollCommunity)
+    -- hooksecurefunc(_G.ClubFinderCommunityAndGuildFinderFrame.CommunityCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
+    -- hooksecurefunc(_G.ClubFinderCommunityAndGuildFinderFrame.CommunityCards.ListScrollFrame, "update", PPC.OnScrollCommunity)
+    -- hooksecurefunc(_G.ClubFinderCommunityAndGuildFinderFrame.PendingCommunityCards, "RefreshLayout", PPC.OnRefreshApplyHooksCommunity)
+    -- hooksecurefunc(_G.ClubFinderCommunityAndGuildFinderFrame.PendingCommunityCards.ListScrollFrame, "update", PPC.OnScrollCommunity)
 end
 
 function tooltipLFG:OnLoad()
@@ -922,6 +996,7 @@ function PPC.SmartHookButtonsCommunity(buttons)
             button:HookScript("OnLeave", PPC.OnLeaveCommunity)
             if type(button.OnEnter) == "function" then hooksecurefunc(button, "OnEnter", PPC.OnEnterCommunity) end
             if type(button.OnLeave) == "function" then hooksecurefunc(button, "OnLeave", PPC.OnLeaveCommunity) end
+            -- TODO: NYI button.RequestJoin
         end
     end
     return numButtons > 0
@@ -931,13 +1006,13 @@ function PPC.OnRefreshApplyHooksCommunity()
     if completed then
         return
     end
-    PPC.SmartHookButtonsCommunity(_G.CommunitiesFrame.MemberList.ListScrollFrame.buttons)
-    PPC.SmartHookButtonsCommunity(_G.ClubFinderGuildFinderFrame.CommunityCards.ListScrollFrame.buttons)
-    PPC.SmartHookButtonsCommunity(_G.ClubFinderGuildFinderFrame.PendingCommunityCards.ListScrollFrame.buttons)
+    -- PPC.SmartHookButtonsCommunity(_G.CommunitiesFrame.MemberList.ScrollBox)
+    -- PPC.SmartHookButtonsCommunity(_G.ClubFinderGuildFinderFrame.CommunityCards.ScrollBox)
+    -- PPC.SmartHookButtonsCommunity(_G.ClubFinderGuildFinderFrame.PendingCommunityCards.ScrollBox)
     PPC.SmartHookButtonsCommunity(_G.ClubFinderGuildFinderFrame.GuildCards.Cards)
     PPC.SmartHookButtonsCommunity(_G.ClubFinderGuildFinderFrame.PendingGuildCards.Cards)
-    PPC.SmartHookButtonsCommunity(_G.ClubFinderCommunityAndGuildFinderFrame.CommunityCards.ListScrollFrame.buttons)
-    PPC.SmartHookButtonsCommunity(_G.ClubFinderCommunityAndGuildFinderFrame.PendingCommunityCards.ListScrollFrame.buttons)
+    -- PPC.SmartHookButtonsCommunity(_G.ClubFinderCommunityAndGuildFinderFrame.CommunityCards.ScrollBox)
+    -- PPC.SmartHookButtonsCommunity(_G.ClubFinderCommunityAndGuildFinderFrame.PendingCommunityCards.ScrollBox)
     PPC.SmartHookButtonsCommunity(_G.ClubFinderCommunityAndGuildFinderFrame.GuildCards.Cards)
     PPC.SmartHookButtonsCommunity(_G.ClubFinderCommunityAndGuildFinderFrame.PendingGuildCards.Cards)
     return true
@@ -1065,6 +1140,9 @@ f:SetScript("OnEvent", function()
 	if not icon then return end
 	if not PPCLDBIconDB then PPCLDBIconDB = {} end
 	icon:Register(PPCAddonName, plugin, PPCLDBIconDB)
+    if PvPEncountersSettings.HideMinimapIcon then
+        LibStub("LibDBIcon-1.0"):Hide(PPCAddonName)
+    end
 end)
 f:RegisterEvent("PLAYER_LOGIN")
 
@@ -1195,15 +1273,15 @@ PPC_SETTINGS_FRAME:SetScript("OnShow", function(frame)
 		"Show Minimap Icon",
 		"Show the icon button arround the minimap.",
 		function(self, value)
-			PPCLDBIconDB.hide = not value
-			if PPCLDBIconDB.hide then
+			PvPEncountersSettings.HideMinimapIcon = not value
+			if PvPEncountersSettings.HideMinimapIcon then
 				LibStub("LibDBIcon-1.0"):Hide(PPCAddonName)
 			else
 				LibStub("LibDBIcon-1.0"):Show(PPCAddonName)
 			end
 		end
     )
-	minimap:SetChecked(not PPCLDBIconDB.hide)
+	minimap:SetChecked(not PvPEncountersSettings.HideMinimapIcon)
 	minimap:SetPoint("TOPLEFT", overallsWithCheckbox, "BOTTOMLEFT", 0, -8)
 
     local formatDropdown = newDropdown("PPCFormat", {"win-lose (%)", "win/total (%)"}, "", function()
@@ -1217,6 +1295,10 @@ PPC_SETTINGS_FRAME:SetScript("OnShow", function(frame)
 	PPCFormatText:SetText("Format")
 
 	frame:SetScript("OnShow", nil)
+
+    if PvPEncountersSettings.HideMinimapIcon then
+        LibStub("LibDBIcon-1.0"):Hide(PPCAddonName)
+    end
 end)
 InterfaceOptions_AddCategory(PPC_SETTINGS_FRAME)
 function plugin.OnClick(self, button)
