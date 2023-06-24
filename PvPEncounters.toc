@@ -1,6 +1,6 @@
 ## Interface: 100100
 ## Title: PVP Encounters
-## Version: 1.0.9
+## Version: 1.2.2
 ## Notes: PvPEncounters will track every victory and defeat in ranked matches with every single of your party members.
 ## Author: Hesa-Zul'jin-US
 ## SavedVariables: PvPEncountersState, PvPEncountersSettings
